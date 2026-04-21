@@ -1,214 +1,193 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>School Helper - Cloud Notes</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>School Helper</title>
 
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: Arial, sans-serif;
-    }
+<style>
+body {
+  margin:0;
+  font-family: Arial;
+  background:#0f172a;
+  color:white;
+}
 
-    body {
-      display: flex;
-      min-height: 100vh;
-      background: #0f172a;
-      color: #e2e8f0;
-    }
+/* LOGIN */
+#loginScreen {
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+}
 
-    .sidebar {
-      width: 240px;
-      background: #111827;
-      padding: 20px;
-    }
+.loginBox {
+  background:#1e293b;
+  padding:30px;
+  border-radius:12px;
+  width:300px;
+  text-align:center;
+}
 
-    .sidebar h2 {
-      color: #38bdf8;
-      margin-bottom: 20px;
-    }
+input, textarea {
+  width:100%;
+  padding:10px;
+  margin-top:10px;
+  border:none;
+  border-radius:8px;
+  background:#0b1220;
+  color:white;
+}
 
-    .nav-btn {
-      width: 100%;
-      margin: 10px 0;
-      padding: 10px;
-      background: #1f2937;
-      border: none;
-      color: white;
-      border-radius: 8px;
-      cursor: pointer;
-      text-align: left;
-    }
+/* DASHBOARD */
+#app {
+  display:none;
+  height:100vh;
+}
 
-    .nav-btn:hover {
-      background: #334155;
-    }
+.sidebar {
+  width:240px;
+  background:#111827;
+  padding:20px;
+  float:left;
+  height:100vh;
+}
 
-    .main {
-      flex: 1;
-      padding: 20px;
-    }
+.main {
+  margin-left:240px;
+  padding:20px;
+}
 
-    .card {
-      background: #1f2937;
-      padding: 20px;
-      border-radius: 12px;
-      margin-bottom: 20px;
-    }
+button {
+  padding:10px;
+  margin-top:10px;
+  background:#38bdf8;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+}
 
-    input, textarea {
-      width: 100%;
-      margin-top: 10px;
-      padding: 10px;
-      border-radius: 8px;
-      border: none;
-      background: #0b1220;
-      color: white;
-    }
+.note {
+  background:#1e293b;
+  padding:10px;
+  margin-top:10px;
+  border-radius:8px;
+}
 
-    button {
-      margin-top: 10px;
-      padding: 10px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      background: #38bdf8;
-      font-weight: bold;
-    }
-
-    .note {
-      background: #111827;
-      padding: 10px;
-      margin-top: 10px;
-      border-radius: 8px;
-    }
-
-    .note button {
-      background: #ef4444;
-      margin-top: 8px;
-    }
-
-    .hidden {
-      display: none;
-    }
-  </style>
+.small {
+  opacity:0.7;
+  font-size:12px;
+}
+</style>
 </head>
 
 <body>
 
-<div class="sidebar">
-  <h2>📚 School Helper</h2>
-  <button class="nav-btn" onclick="show('home')">Home</button>
-  <button class="nav-btn" onclick="show('notes')">Cloud Notes</button>
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="loginBox">
+    <h2>📚 School Helper</h2>
+    <p class="small">Sign in to continue</p>
+
+    <input id="username" placeholder="Username">
+    <button onclick="login()">Login</button>
+  </div>
 </div>
 
-<div class="main">
+<!-- APP -->
+<div id="app">
 
-  <div id="home" class="section">
-    <div class="card">
-      <h2>Welcome 👋</h2>
-      <p>Cloud-powered school helper dashboard.</p>
-    </div>
+  <div class="sidebar">
+    <h3>📚 Dashboard</h3>
+    <button onclick="showTab('notes')">Notes</button>
+    <button onclick="logout()">Logout</button>
   </div>
 
-  <div id="notes" class="section hidden">
-    <div class="card">
-      <h2>Cloud Notes ☁️</h2>
+  <div class="main">
 
-      <input id="title" placeholder="Title"/>
-      <textarea id="content" placeholder="Write your note..."></textarea>
+    <h2>Welcome 👋 <span id="user"></span></h2>
+    <p class="small">Modern school productivity dashboard</p>
 
-      <button onclick="addNote()">Save Note</button>
+    <!-- NOTES -->
+    <div id="notesTab">
 
-      <div id="list"></div>
+      <h3>📝 Notes</h3>
+
+      <input id="title" placeholder="Title">
+      <textarea id="content" placeholder="Write note..."></textarea>
+      <button onclick="addNote()">Save</button>
+
+      <input id="search" placeholder="Search notes..." oninput="renderNotes()">
+
+      <div id="notesList"></div>
     </div>
-  </div>
 
+  </div>
 </div>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import {
-    getFirestore,
-    collection,
-    addDoc,
-    getDocs,
-    deleteDoc,
-    doc
-  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+<script>
+let currentUser = null;
+let notes = JSON.parse(localStorage.getItem("notes") || "[]");
 
-  // 🔴 REPLACE THIS WITH YOUR FIREBASE CONFIG
-  const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "XXXX",
-    appId: "XXXX"
-  };
+/* LOGIN */
+function login() {
+  const u = document.getElementById("username").value;
+  if(!u) return;
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const notesRef = collection(db, "notes");
+  currentUser = u;
+  document.getElementById("user").innerText = u;
 
-  window.addNote = async function () {
-    const title = document.getElementById("title").value;
-    const content = document.getElementById("content").value;
+  document.getElementById("loginScreen").style.display="none";
+  document.getElementById("app").style.display="block";
 
-    if (!title || !content) return;
+  renderNotes();
+}
 
-    await addDoc(notesRef, {
-      title,
-      content,
-      time: Date.now()
-    });
+function logout() {
+  location.reload();
+}
 
-    document.getElementById("title").value = "";
-    document.getElementById("content").value = "";
+/* NOTES */
+function addNote() {
+  const title = document.getElementById("title").value;
+  const content = document.getElementById("content").value;
 
-    loadNotes();
-  };
+  notes.push({
+    id: Date.now(),
+    title,
+    content,
+    user: currentUser
+  });
 
-  window.deleteNote = async function (id) {
-    await deleteDoc(doc(db, "notes", id));
-    loadNotes();
-  };
+  localStorage.setItem("notes", JSON.stringify(notes));
 
-  async function loadNotes() {
-    const snap = await getDocs(notesRef);
-    const list = document.getElementById("list");
+  document.getElementById("title").value="";
+  document.getElementById("content").value="";
 
-    list.innerHTML = "";
+  renderNotes();
+}
 
-    snap.forEach((d) => {
-      const data = d.data();
+function renderNotes() {
+  const list = document.getElementById("notesList");
+  const search = document.getElementById("search").value.toLowerCase();
 
+  list.innerHTML="";
+
+  notes
+    .filter(n => n.user === currentUser)
+    .filter(n => n.title.toLowerCase().includes(search) || n.content.toLowerCase().includes(search))
+    .forEach(n => {
       const div = document.createElement("div");
-      div.className = "note";
-
-      div.innerHTML = `
-        <b>${data.title}</b>
-        <p>${data.content}</p>
-        <button onclick="deleteNote('${d.id}')">Delete</button>
-      `;
-
+      div.className="note";
+      div.innerHTML = `<b>${n.title}</b><br>${n.content}`;
       list.appendChild(div);
     });
-  }
+}
 
-  window.show = function (id) {
-    document.querySelectorAll(".section")
-      .forEach(s => s.classList.add("hidden"));
-
-    document.getElementById(id).classList.remove("hidden");
-
-    if (id === "notes") loadNotes();
-  };
-
-  loadNotes();
+function showTab(tab){
+  alert("Only Notes implemented for now");
+}
 </script>
 
 </body>
