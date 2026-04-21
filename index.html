@@ -1,133 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>School Helper SaaS</title>
+<title>School SaaS</title>
+
+<link rel="manifest" href="manifest.json">
 
 <style>
-body {
+body{
   margin:0;
-  font-family: Arial;
-  background:#0f172a;
+  font-family:Arial;
+  background:#0b1220;
   color:white;
 }
 
-/* LOGIN */
-.center {
+.center{
   height:100vh;
   display:flex;
   justify-content:center;
   align-items:center;
 }
 
-.card {
-  background:#1f2937;
+.card{
+  background:#111827;
   padding:25px;
   border-radius:12px;
   width:320px;
   text-align:center;
 }
 
-input, select {
+input, textarea, select{
   width:100%;
   padding:10px;
   margin-top:10px;
   border:none;
   border-radius:8px;
-  background:#0b1220;
+  background:#0f172a;
   color:white;
 }
 
-button {
+button{
   width:100%;
   margin-top:10px;
   padding:10px;
   border:none;
   border-radius:8px;
   background:#38bdf8;
+  cursor:pointer;
   font-weight:bold;
-  cursor:pointer;
 }
 
-.link {
-  margin-top:10px;
-  font-size:12px;
-  color:#93c5fd;
-  cursor:pointer;
-}
-
-/* APP */
-.app {
+.app{
   display:flex;
   height:100vh;
 }
 
-.sidebar {
-  width:220px;
-  background:#111827;
-  padding:15px;
+.sidebar{
+  width:240px;
+  background:#0f172a;
+  padding:10px;
 }
 
-.sidebar button {
-  width:100%;
-  margin:8px 0;
+.main{
+  flex:1;
+  display:flex;
+}
+
+.list{
+  width:280px;
+  border-right:1px solid #1f2937;
+  overflow:auto;
+}
+
+.note{
   padding:10px;
-  border:none;
+  background:#111827;
+  margin:5px;
   border-radius:8px;
-  background:#1f2937;
-  color:white;
   cursor:pointer;
 }
 
-.sidebar button:hover { background:#334155; }
-
-.main {
+.editor{
   flex:1;
   padding:20px;
 }
 
-.box {
-  background:#1f2937;
-  padding:15px;
-  border-radius:10px;
-}
+.hidden{display:none;}
 
-textarea {
-  width:100%;
-  margin-top:10px;
-  padding:10px;
-  border-radius:8px;
-  border:none;
-  background:#0b1220;
-  color:white;
-}
-
-.note {
+.install{
+  position:fixed;
+  bottom:20px;
+  left:20px;
+  right:20px;
   background:#111827;
   padding:10px;
-  margin-top:10px;
-  border-radius:8px;
+  border-radius:10px;
+  display:none;
+  justify-content:space-between;
 }
-
-.hidden { display:none; }
 </style>
 </head>
 
 <body>
 
-<!-- AUTH -->
+<!-- LOGIN -->
 <div id="auth" class="center">
   <div class="card">
-    <h2 id="title">Login</h2>
+    <h2>Login</h2>
 
     <input id="email" placeholder="Email"/>
-    <input id="password" type="password" placeholder="Password"/>
+    <input id="pass" type="password" placeholder="Password"/>
 
-    <button onclick="auth()">Continue</button>
-
-    <div class="link" onclick="toggle()">Switch login / signup</div>
-    <div class="link" onclick="forgot()">Forgot password?</div>
+    <button onclick="login()">Continue</button>
   </div>
 </div>
 
@@ -135,53 +120,31 @@ textarea {
 <div id="app" class="app hidden">
 
   <div class="sidebar">
-    <h3>📚 SaaS</h3>
-    <button onclick="show('notes')">Notes</button>
-    <button onclick="show('calc')">Calculator</button>
+    <h3>📚 School SaaS</h3>
+    <button onclick="newNote()">+ New</button>
     <button onclick="logout()">Logout</button>
   </div>
 
   <div class="main">
 
-    <!-- NOTES -->
-    <div id="notes" class="section">
-      <div class="box">
-        <h2>Cloud Notes ☁️</h2>
+    <div class="list" id="list"></div>
 
-        <input id="ntitle" placeholder="Title"/>
-        <textarea id="ncontent" placeholder="Write note..."></textarea>
-        <button onclick="addNote()">Save</button>
-
-        <div id="list"></div>
-      </div>
-    </div>
-
-    <!-- CALCULATOR -->
-    <div id="calc" class="section hidden">
-      <div class="box">
-        <h2>Calculator 🧮</h2>
-
-        <input id="nums" placeholder="Numbers: 5,10,20"/>
-
-        <select id="op">
-          <option value="sum">Sum</option>
-          <option value="avg">Average</option>
-          <option value="sqrt">Square root (first)</option>
-          <option value="square">Square (first)</option>
-          <option value="max">Max</option>
-          <option value="min">Min</option>
-        </select>
-
-        <button onclick="calc()">Calculate</button>
-
-        <h3 id="res"></h3>
-      </div>
+    <div class="editor">
+      <input id="title" placeholder="Title"/>
+      <textarea id="content" placeholder="Note..."></textarea>
+      <button onclick="save()">Save</button>
     </div>
 
   </div>
+
 </div>
 
-<!-- SUPABASE -->
+<!-- INSTALL -->
+<div class="install" id="installBox">
+  <span>📱 Install app</span>
+  <button onclick="install()">Install</button>
+</div>
+
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
@@ -190,124 +153,110 @@ const supabase = createClient(
   "sb_publishable_ND5M0H9tuFmirts34peHPA_3pwCD-1l"
 );
 
-let user = null;
-let signupMode = false;
+let user=null;
+let notes=[];
+let current=null;
 
 /* SESSION */
-const session = await supabase.auth.getSession();
-if (session.data.session) {
-  user = session.data.session.user;
-  openApp();
+const s = await supabase.auth.getSession();
+if(s.data.session){
+  user=s.data.session.user;
+  open();
 }
 
-/* AUTH */
-window.auth = async () => {
-  const email = emailEl().value;
-  const password = passEl().value;
-
-  if (signupMode) {
-    const { error } = await supabase.auth.signUp({ email, password });
-    alert(error ? error.message : "Check email to confirm account.");
-    return;
-  }
-
+/* LOGIN */
+window.login = async () => {
   const { data, error } = await supabase.auth.signInWithPassword({
-    email, password
+    email:email.value,
+    password:pass.value
   });
 
-  if (error) return alert(error.message);
+  if(error){
+    const r = await supabase.auth.signUp({
+      email:email.value,
+      password:pass.value
+    });
+    user=r.data.user;
+  } else {
+    user=data.user;
+  }
 
-  user = data.user;
-  openApp();
+  open();
 };
 
-/* FORGOT */
-window.forgot = async () => {
-  const email = emailEl().value;
-  if (!email) return alert("Enter email first");
-
-  await supabase.auth.resetPasswordForEmail(email);
-  alert("Reset email sent");
-};
-
-/* TOGGLE */
-window.toggle = () => {
-  signupMode = !signupMode;
-  document.getElementById("title").innerText =
-    signupMode ? "Sign Up" : "Login";
-};
-
-/* LOGOUT */
 window.logout = async () => {
   await supabase.auth.signOut();
   location.reload();
 };
 
-/* OPEN APP */
-function openApp() {
-  document.getElementById("auth").classList.add("hidden");
-  document.getElementById("app").classList.remove("hidden");
-  loadNotes();
+function open(){
+  auth.classList.add("hidden");
+  app.classList.remove("hidden");
+  load();
 }
 
 /* NOTES */
-window.addNote = async () => {
-  await supabase.from("notes").insert([{
-    title: document.getElementById("ntitle").value,
-    content: document.getElementById("ncontent").value,
-    user_id: user.id
-  }]);
-
-  loadNotes();
-};
-
-window.loadNotes = async () => {
+async function load(){
   const { data } = await supabase
     .from("notes")
     .select("*")
     .eq("user_id", user.id);
 
-  const list = document.getElementById("list");
-  list.innerHTML = "";
+  notes=data;
+  render();
+}
 
-  data.forEach(n => {
-    const div = document.createElement("div");
-    div.className = "note";
-    div.innerHTML = `<b>${n.title}</b><br>${n.content}`;
-    list.appendChild(div);
+function render(){
+  list.innerHTML="";
+  notes.forEach(n=>{
+    const d=document.createElement("div");
+    d.className="note";
+    d.innerText=n.title;
+    d.onclick=()=>openNote(n);
+    list.appendChild(d);
   });
+}
+
+function openNote(n){
+  current=n;
+  title.value=n.title;
+  content.value=n.content;
+}
+
+window.save = async () => {
+  await supabase.from("notes").insert([{
+    title:title.value,
+    content:content.value,
+    user_id:user.id
+  }]);
+
+  load();
 };
 
-/* CALCULATOR */
-window.calc = () => {
-  const nums = document.getElementById("nums").value
-    .split(",")
-    .map(n => Number(n.trim()))
-    .filter(n => !isNaN(n));
-
-  const op = document.getElementById("op").value;
-
-  let r = 0;
-
-  if (op === "sum") r = nums.reduce((a,b)=>a+b,0);
-  if (op === "avg") r = nums.reduce((a,b)=>a+b,0)/nums.length;
-  if (op === "sqrt") r = Math.sqrt(nums[0]);
-  if (op === "square") r = nums[0]*nums[0];
-  if (op === "max") r = Math.max(...nums);
-  if (op === "min") r = Math.min(...nums);
-
-  document.getElementById("res").innerText = "Result: " + r;
+window.newNote = () => {
+  title.value="";
+  content.value="";
 };
 
-/* NAV */
-window.show = (id) => {
-  document.querySelectorAll(".section").forEach(s => s.classList.add("hidden"));
-  document.getElementById(id).classList.remove("hidden");
+/* PWA */
+let deferred;
+
+window.addEventListener("beforeinstallprompt",(e)=>{
+  e.preventDefault();
+  deferred=e;
+  installBox.style.display="flex";
+});
+
+window.install = async () => {
+  deferred.prompt();
+  deferred=null;
+  installBox.style.display="none";
 };
 
-/* HELPERS */
-const emailEl = () => document.getElementById("email");
-const passEl = () => document.getElementById("password");
+/* SW */
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("service-worker.js");
+}
 </script>
 
 </body>
