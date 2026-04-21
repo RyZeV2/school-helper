@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>School Helper Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>School Helper - Cloud Notes</title>
+
   <style>
     * {
       margin: 0;
@@ -13,10 +14,10 @@
     }
 
     body {
-      background: #0f172a;
-      color: #e2e8f0;
       display: flex;
       min-height: 100vh;
+      background: #0f172a;
+      color: #e2e8f0;
     }
 
     .sidebar {
@@ -26,21 +27,19 @@
     }
 
     .sidebar h2 {
-      margin-bottom: 20px;
-      font-size: 20px;
       color: #38bdf8;
+      margin-bottom: 20px;
     }
 
     .nav-btn {
-      display: block;
       width: 100%;
       margin: 10px 0;
       padding: 10px;
       background: #1f2937;
       border: none;
       color: white;
-      cursor: pointer;
       border-radius: 8px;
+      cursor: pointer;
       text-align: left;
     }
 
@@ -62,8 +61,8 @@
 
     input, textarea {
       width: 100%;
-      padding: 10px;
       margin-top: 10px;
+      padding: 10px;
       border-radius: 8px;
       border: none;
       background: #0b1220;
@@ -77,159 +76,139 @@
       border-radius: 8px;
       cursor: pointer;
       background: #38bdf8;
-      color: black;
       font-weight: bold;
     }
 
-    .hidden { display: none; }
-
-    .notes-container {
-      display: flex;
-      gap: 20px;
-    }
-
-    .notes-list {
-      width: 30%;
+    .note {
       background: #111827;
       padding: 10px;
-      border-radius: 10px;
-      max-height: 400px;
-      overflow-y: auto;
-    }
-
-    .note-item {
-      padding: 10px;
-      margin-bottom: 8px;
-      background: #1f2937;
+      margin-top: 10px;
       border-radius: 8px;
-      cursor: pointer;
     }
 
-    .note-item:hover {
-      background: #334155;
+    .note button {
+      background: #ef4444;
+      margin-top: 8px;
     }
 
-    .notes-editor {
-      flex: 1;
+    .hidden {
+      display: none;
     }
   </style>
 </head>
+
 <body>
 
-  <div class="sidebar">
-    <h2>📚 School Helper</h2>
-    <button class="nav-btn" onclick="showSection('home')">🏠 Home</button>
-    <button class="nav-btn" onclick="showSection('calc')">🧮 Calculator</button>
-    <button class="nav-btn" onclick="showSection('notes')">📝 Notes</button>
+<div class="sidebar">
+  <h2>📚 School Helper</h2>
+  <button class="nav-btn" onclick="show('home')">Home</button>
+  <button class="nav-btn" onclick="show('notes')">Cloud Notes</button>
+</div>
+
+<div class="main">
+
+  <div id="home" class="section">
+    <div class="card">
+      <h2>Welcome 👋</h2>
+      <p>Cloud-powered school helper dashboard.</p>
+    </div>
   </div>
 
-  <div class="main">
+  <div id="notes" class="section hidden">
+    <div class="card">
+      <h2>Cloud Notes ☁️</h2>
 
-    <div id="home" class="section">
-      <div class="card">
-        <h2>Welcome 👋</h2>
-        <p>Your school dashboard with useful tools.</p>
-      </div>
+      <input id="title" placeholder="Title"/>
+      <textarea id="content" placeholder="Write your note..."></textarea>
+
+      <button onclick="addNote()">Save Note</button>
+
+      <div id="list"></div>
     </div>
-
-    <div id="calc" class="section hidden">
-      <div class="card">
-        <h2>Calculator</h2>
-        <input id="calcInput" placeholder="e.g. 5+5*2" />
-        <button onclick="calculate()">Calculate</button>
-        <p id="result"></p>
-      </div>
-    </div>
-
-    <div id="notes" class="section hidden">
-      <div class="card">
-        <h2>Advanced Notes</h2>
-        <button onclick="createNote()">+ New Note</button>
-        <div class="notes-container">
-
-          <div class="notes-list" id="notesList"></div>
-
-          <div class="notes-editor">
-            <input id="noteTitle" placeholder="Title" />
-            <textarea id="noteContent" placeholder="Write your note..."></textarea>
-            <button onclick="saveNote()">Save</button>
-            <button onclick="deleteNote()">Delete</button>
-          </div>
-
-        </div>
-      </div>
-    </div>
-
   </div>
 
-<script>
-let notes = JSON.parse(localStorage.getItem('notes')) || [];
-let currentNoteId = null;
+</div>
 
-function showSection(id){
-  document.querySelectorAll('.section').forEach(s=>s.classList.add('hidden'));
-  document.getElementById(id).classList.remove('hidden');
-  if(id === 'notes') renderNotes();
-}
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import {
+    getFirestore,
+    collection,
+    addDoc,
+    getDocs,
+    deleteDoc,
+    doc
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-function calculate(){
-  try {
-    document.getElementById('result').innerText = eval(document.getElementById('calcInput').value);
-  } catch {
-    document.getElementById('result').innerText = 'Error';
+  // 🔴 REPLACE THIS WITH YOUR FIREBASE CONFIG
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "XXXX",
+    appId: "XXXX"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const notesRef = collection(db, "notes");
+
+  window.addNote = async function () {
+    const title = document.getElementById("title").value;
+    const content = document.getElementById("content").value;
+
+    if (!title || !content) return;
+
+    await addDoc(notesRef, {
+      title,
+      content,
+      time: Date.now()
+    });
+
+    document.getElementById("title").value = "";
+    document.getElementById("content").value = "";
+
+    loadNotes();
+  };
+
+  window.deleteNote = async function (id) {
+    await deleteDoc(doc(db, "notes", id));
+    loadNotes();
+  };
+
+  async function loadNotes() {
+    const snap = await getDocs(notesRef);
+    const list = document.getElementById("list");
+
+    list.innerHTML = "";
+
+    snap.forEach((d) => {
+      const data = d.data();
+
+      const div = document.createElement("div");
+      div.className = "note";
+
+      div.innerHTML = `
+        <b>${data.title}</b>
+        <p>${data.content}</p>
+        <button onclick="deleteNote('${d.id}')">Delete</button>
+      `;
+
+      list.appendChild(div);
+    });
   }
-}
 
-function createNote(){
-  const note = {id: Date.now(), title:'New Note', content:''};
-  notes.push(note);
-  currentNoteId = note.id;
-  saveToStorage();
-  renderNotes();
-  loadNote(note.id);
-}
+  window.show = function (id) {
+    document.querySelectorAll(".section")
+      .forEach(s => s.classList.add("hidden"));
 
-function renderNotes(){
-  const list = document.getElementById('notesList');
-  list.innerHTML = '';
-  notes.forEach(n=>{
-    const div = document.createElement('div');
-    div.className='note-item';
-    div.innerText = n.title;
-    div.onclick = ()=>loadNote(n.id);
-    list.appendChild(div);
-  });
-}
+    document.getElementById(id).classList.remove("hidden");
 
-function loadNote(id){
-  const note = notes.find(n=>n.id===id);
-  if(!note) return;
-  currentNoteId = id;
-  document.getElementById('noteTitle').value = note.title;
-  document.getElementById('noteContent').value = note.content;
-}
+    if (id === "notes") loadNotes();
+  };
 
-function saveNote(){
-  const note = notes.find(n=>n.id===currentNoteId);
-  if(!note) return;
-  note.title = document.getElementById('noteTitle').value;
-  note.content = document.getElementById('noteContent').value;
-  saveToStorage();
-  renderNotes();
-}
-
-function deleteNote(){
-  notes = notes.filter(n=>n.id!==currentNoteId);
-  currentNoteId = null;
-  saveToStorage();
-  renderNotes();
-  document.getElementById('noteTitle').value='';
-  document.getElementById('noteContent').value='';
-}
-
-function saveToStorage(){
-  localStorage.setItem('notes', JSON.stringify(notes));
-}
+  loadNotes();
 </script>
 
 </body>
