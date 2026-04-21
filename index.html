@@ -8,9 +8,57 @@
 <style>
 body {
   margin:0;
-  font-family:Arial;
+  font-family: Arial;
   background:#0f172a;
   color:white;
+}
+
+/* LOGIN */
+.center {
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+.card {
+  background:#1f2937;
+  padding:25px;
+  border-radius:12px;
+  width:320px;
+  text-align:center;
+}
+
+input, select {
+  width:100%;
+  padding:10px;
+  margin-top:10px;
+  border:none;
+  border-radius:8px;
+  background:#0b1220;
+  color:white;
+}
+
+button {
+  width:100%;
+  margin-top:10px;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  background:#38bdf8;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.link {
+  margin-top:10px;
+  font-size:12px;
+  color:#93c5fd;
+  cursor:pointer;
+}
+
+/* APP */
+.app {
   display:flex;
   height:100vh;
 }
@@ -32,22 +80,20 @@ body {
   cursor:pointer;
 }
 
-.sidebar button:hover {
-  background:#334155;
-}
+.sidebar button:hover { background:#334155; }
 
 .main {
   flex:1;
   padding:20px;
 }
 
-.card {
+.box {
   background:#1f2937;
   padding:15px;
   border-radius:10px;
 }
 
-input, textarea {
+textarea {
   width:100%;
   margin-top:10px;
   padding:10px;
@@ -55,16 +101,6 @@ input, textarea {
   border:none;
   background:#0b1220;
   color:white;
-}
-
-button.action {
-  margin-top:10px;
-  padding:10px;
-  background:#38bdf8;
-  border:none;
-  border-radius:8px;
-  cursor:pointer;
-  font-weight:bold;
 }
 
 .note {
@@ -77,143 +113,201 @@ button.action {
 .hidden { display:none; }
 </style>
 </head>
+
 <body>
 
-<div class="sidebar">
-  <h3>📚 SaaS App</h3>
-  <button onclick="show('login')">Login</button>
-  <button onclick="show('notes')">Notes</button>
-  <button onclick="show('calc')">Calculator</button>
-  <button onclick="logout()">Logout</button>
-</div>
-
-<div class="main">
-
-<!-- LOGIN -->
-<div id="login" class="section">
+<!-- AUTH -->
+<div id="auth" class="center">
   <div class="card">
-    <h2>Login</h2>
+    <h2 id="title">Login</h2>
+
     <input id="email" placeholder="Email"/>
     <input id="password" type="password" placeholder="Password"/>
-    <button class="action" onclick="signIn()">Login / Signup</button>
+
+    <button onclick="auth()">Continue</button>
+
+    <div class="link" onclick="toggle()">Switch login / signup</div>
+    <div class="link" onclick="forgot()">Forgot password?</div>
   </div>
 </div>
 
-<!-- NOTES -->
-<div id="notes" class="section hidden">
-  <div class="card">
-    <h2>Cloud Notes ☁️</h2>
-    <input id="title" placeholder="Title"/>
-    <textarea id="content" placeholder="Note..."></textarea>
-    <button class="action" onclick="addNote()">Save</button>
+<!-- APP -->
+<div id="app" class="app hidden">
 
-    <div id="notesList"></div>
+  <div class="sidebar">
+    <h3>📚 SaaS</h3>
+    <button onclick="show('notes')">Notes</button>
+    <button onclick="show('calc')">Calculator</button>
+    <button onclick="logout()">Logout</button>
   </div>
-</div>
 
-<!-- CALCULATOR -->
-<div id="calc" class="section hidden">
-  <div class="card">
-    <h2>Calculator 🧮</h2>
-    <input id="a" placeholder="Number 1"/>
-    <input id="b" placeholder="Number 2"/>
-    <button class="action" onclick="calc()">Add</button>
-    <h3 id="result"></h3>
+  <div class="main">
+
+    <!-- NOTES -->
+    <div id="notes" class="section">
+      <div class="box">
+        <h2>Cloud Notes ☁️</h2>
+
+        <input id="ntitle" placeholder="Title"/>
+        <textarea id="ncontent" placeholder="Write note..."></textarea>
+        <button onclick="addNote()">Save</button>
+
+        <div id="list"></div>
+      </div>
+    </div>
+
+    <!-- CALCULATOR -->
+    <div id="calc" class="section hidden">
+      <div class="box">
+        <h2>Calculator 🧮</h2>
+
+        <input id="nums" placeholder="Numbers: 5,10,20"/>
+
+        <select id="op">
+          <option value="sum">Sum</option>
+          <option value="avg">Average</option>
+          <option value="sqrt">Square root (first)</option>
+          <option value="square">Square (first)</option>
+          <option value="max">Max</option>
+          <option value="min">Min</option>
+        </select>
+
+        <button onclick="calc()">Calculate</button>
+
+        <h3 id="res"></h3>
+      </div>
+    </div>
+
   </div>
-</div>
-
 </div>
 
 <!-- SUPABASE -->
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-// ✅ FIXED CONFIG
-const supabaseUrl = "https://tvjzmjahyipbihvkemkd.supabase.co";
-const supabaseKey = "sb_publishable_ND5M0H9tuFmirts34peHPA_3pwCD-1l";
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(
+  "https://tvjzmjahyipbihvkemkd.supabase.co",
+  "sb_publishable_ND5M0H9tuFmirts34peHPA_3pwCD-1l"
+);
 
 let user = null;
+let signupMode = false;
 
-// 🔐 LOGIN
-window.signIn = async () => {
-  let email = document.getElementById("email").value;
-  let password = document.getElementById("password").value;
+/* SESSION */
+const session = await supabase.auth.getSession();
+if (session.data.session) {
+  user = session.data.session.user;
+  openApp();
+}
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password
-  });
+/* AUTH */
+window.auth = async () => {
+  const email = emailEl().value;
+  const password = passEl().value;
 
-  if (error) {
-    const signup = await supabase.auth.signUp({ email, password });
-    alert("Account created. Please login again.");
+  if (signupMode) {
+    const { error } = await supabase.auth.signUp({ email, password });
+    alert(error ? error.message : "Check email to confirm account.");
     return;
   }
 
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email, password
+  });
+
+  if (error) return alert(error.message);
+
   user = data.user;
-  show("notes");
-  loadNotes();
+  openApp();
 };
 
-// 🚪 LOGOUT
+/* FORGOT */
+window.forgot = async () => {
+  const email = emailEl().value;
+  if (!email) return alert("Enter email first");
+
+  await supabase.auth.resetPasswordForEmail(email);
+  alert("Reset email sent");
+};
+
+/* TOGGLE */
+window.toggle = () => {
+  signupMode = !signupMode;
+  document.getElementById("title").innerText =
+    signupMode ? "Sign Up" : "Login";
+};
+
+/* LOGOUT */
 window.logout = async () => {
   await supabase.auth.signOut();
-  user = null;
-  show("login");
+  location.reload();
 };
 
-// 📝 ADD NOTE
+/* OPEN APP */
+function openApp() {
+  document.getElementById("auth").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  loadNotes();
+}
+
+/* NOTES */
 window.addNote = async () => {
-  if (!user) return alert("Login first!");
-
-  let title = document.getElementById("title").value;
-  let content = document.getElementById("content").value;
-
-  await supabase.from("notes").insert([
-    {
-      title,
-      content,
-      user_id: user.id
-    }
-  ]);
+  await supabase.from("notes").insert([{
+    title: document.getElementById("ntitle").value,
+    content: document.getElementById("ncontent").value,
+    user_id: user.id
+  }]);
 
   loadNotes();
 };
 
-// 📥 LOAD NOTES
 window.loadNotes = async () => {
   const { data } = await supabase
     .from("notes")
     .select("*")
     .eq("user_id", user.id);
 
-  let list = document.getElementById("notesList");
+  const list = document.getElementById("list");
   list.innerHTML = "";
 
   data.forEach(n => {
-    let div = document.createElement("div");
+    const div = document.createElement("div");
     div.className = "note";
     div.innerHTML = `<b>${n.title}</b><br>${n.content}`;
     list.appendChild(div);
   });
 };
 
-// 🧮 CALCULATOR
+/* CALCULATOR */
 window.calc = () => {
-  let a = Number(document.getElementById("a").value);
-  let b = Number(document.getElementById("b").value);
-  document.getElementById("result").innerText = "Result: " + (a + b);
+  const nums = document.getElementById("nums").value
+    .split(",")
+    .map(n => Number(n.trim()))
+    .filter(n => !isNaN(n));
+
+  const op = document.getElementById("op").value;
+
+  let r = 0;
+
+  if (op === "sum") r = nums.reduce((a,b)=>a+b,0);
+  if (op === "avg") r = nums.reduce((a,b)=>a+b,0)/nums.length;
+  if (op === "sqrt") r = Math.sqrt(nums[0]);
+  if (op === "square") r = nums[0]*nums[0];
+  if (op === "max") r = Math.max(...nums);
+  if (op === "min") r = Math.min(...nums);
+
+  document.getElementById("res").innerText = "Result: " + r;
 };
 
-// UI SWITCH
+/* NAV */
 window.show = (id) => {
   document.querySelectorAll(".section").forEach(s => s.classList.add("hidden"));
   document.getElementById(id).classList.remove("hidden");
-
-  if (id === "notes" && user) loadNotes();
 };
+
+/* HELPERS */
+const emailEl = () => document.getElementById("email");
+const passEl = () => document.getElementById("password");
 </script>
 
 </body>
