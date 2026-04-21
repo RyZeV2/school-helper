@@ -1,193 +1,219 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>School Helper</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>School Helper SaaS</title>
 
 <style>
 body {
   margin:0;
-  font-family: Arial;
+  font-family:Arial;
   background:#0f172a;
   color:white;
-}
-
-/* LOGIN */
-#loginScreen {
-  height:100vh;
   display:flex;
-  justify-content:center;
-  align-items:center;
-  flex-direction:column;
-}
-
-.loginBox {
-  background:#1e293b;
-  padding:30px;
-  border-radius:12px;
-  width:300px;
-  text-align:center;
-}
-
-input, textarea {
-  width:100%;
-  padding:10px;
-  margin-top:10px;
-  border:none;
-  border-radius:8px;
-  background:#0b1220;
-  color:white;
-}
-
-/* DASHBOARD */
-#app {
-  display:none;
   height:100vh;
 }
 
 .sidebar {
-  width:240px;
+  width:220px;
   background:#111827;
-  padding:20px;
-  float:left;
-  height:100vh;
+  padding:15px;
+}
+
+.sidebar button {
+  width:100%;
+  margin:8px 0;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  background:#1f2937;
+  color:white;
+  cursor:pointer;
+}
+
+.sidebar button:hover {
+  background:#334155;
 }
 
 .main {
-  margin-left:240px;
+  flex:1;
   padding:20px;
 }
 
-button {
-  padding:10px;
+.card {
+  background:#1f2937;
+  padding:15px;
+  border-radius:10px;
+}
+
+input, textarea {
+  width:100%;
   margin-top:10px;
+  padding:10px;
+  border-radius:8px;
+  border:none;
+  background:#0b1220;
+  color:white;
+}
+
+button.action {
+  margin-top:10px;
+  padding:10px;
   background:#38bdf8;
   border:none;
   border-radius:8px;
   cursor:pointer;
+  font-weight:bold;
 }
 
 .note {
-  background:#1e293b;
+  background:#111827;
   padding:10px;
   margin-top:10px;
   border-radius:8px;
 }
 
-.small {
-  opacity:0.7;
-  font-size:12px;
-}
+.hidden { display:none; }
 </style>
 </head>
-
 <body>
 
+<div class="sidebar">
+  <h3>📚 SaaS App</h3>
+  <button onclick="show('login')">Login</button>
+  <button onclick="show('notes')">Notes</button>
+  <button onclick="show('calc')">Calculator</button>
+  <button onclick="logout()">Logout</button>
+</div>
+
+<div class="main">
+
 <!-- LOGIN -->
-<div id="loginScreen">
-  <div class="loginBox">
-    <h2>📚 School Helper</h2>
-    <p class="small">Sign in to continue</p>
-
-    <input id="username" placeholder="Username">
-    <button onclick="login()">Login</button>
+<div id="login" class="section">
+  <div class="card">
+    <h2>Login</h2>
+    <input id="email" placeholder="Email"/>
+    <input id="password" type="password" placeholder="Password"/>
+    <button class="action" onclick="signIn()">Login / Signup</button>
   </div>
 </div>
 
-<!-- APP -->
-<div id="app">
+<!-- NOTES -->
+<div id="notes" class="section hidden">
+  <div class="card">
+    <h2>Cloud Notes ☁️</h2>
+    <input id="title" placeholder="Title"/>
+    <textarea id="content" placeholder="Note..."></textarea>
+    <button class="action" onclick="addNote()">Save</button>
 
-  <div class="sidebar">
-    <h3>📚 Dashboard</h3>
-    <button onclick="showTab('notes')">Notes</button>
-    <button onclick="logout()">Logout</button>
-  </div>
-
-  <div class="main">
-
-    <h2>Welcome 👋 <span id="user"></span></h2>
-    <p class="small">Modern school productivity dashboard</p>
-
-    <!-- NOTES -->
-    <div id="notesTab">
-
-      <h3>📝 Notes</h3>
-
-      <input id="title" placeholder="Title">
-      <textarea id="content" placeholder="Write note..."></textarea>
-      <button onclick="addNote()">Save</button>
-
-      <input id="search" placeholder="Search notes..." oninput="renderNotes()">
-
-      <div id="notesList"></div>
-    </div>
-
+    <div id="notesList"></div>
   </div>
 </div>
 
-<script>
-let currentUser = null;
-let notes = JSON.parse(localStorage.getItem("notes") || "[]");
+<!-- CALCULATOR -->
+<div id="calc" class="section hidden">
+  <div class="card">
+    <h2>Calculator 🧮</h2>
+    <input id="a" placeholder="Number 1"/>
+    <input id="b" placeholder="Number 2"/>
+    <button class="action" onclick="calc()">Add</button>
+    <h3 id="result"></h3>
+  </div>
+</div>
 
-/* LOGIN */
-function login() {
-  const u = document.getElementById("username").value;
-  if(!u) return;
+</div>
 
-  currentUser = u;
-  document.getElementById("user").innerText = u;
+<!-- SUPABASE -->
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-  document.getElementById("loginScreen").style.display="none";
-  document.getElementById("app").style.display="block";
+// ✅ FIXED CONFIG
+const supabaseUrl = "https://tvjzmjahyipbihvkemkd.supabase.co";
+const supabaseKey = "sb_publishable_ND5M0H9tuFmirts34peHPA_3pwCD-1l";
 
-  renderNotes();
-}
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-function logout() {
-  location.reload();
-}
+let user = null;
 
-/* NOTES */
-function addNote() {
-  const title = document.getElementById("title").value;
-  const content = document.getElementById("content").value;
+// 🔐 LOGIN
+window.signIn = async () => {
+  let email = document.getElementById("email").value;
+  let password = document.getElementById("password").value;
 
-  notes.push({
-    id: Date.now(),
-    title,
-    content,
-    user: currentUser
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password
   });
 
-  localStorage.setItem("notes", JSON.stringify(notes));
+  if (error) {
+    const signup = await supabase.auth.signUp({ email, password });
+    alert("Account created. Please login again.");
+    return;
+  }
 
-  document.getElementById("title").value="";
-  document.getElementById("content").value="";
+  user = data.user;
+  show("notes");
+  loadNotes();
+};
 
-  renderNotes();
-}
+// 🚪 LOGOUT
+window.logout = async () => {
+  await supabase.auth.signOut();
+  user = null;
+  show("login");
+};
 
-function renderNotes() {
-  const list = document.getElementById("notesList");
-  const search = document.getElementById("search").value.toLowerCase();
+// 📝 ADD NOTE
+window.addNote = async () => {
+  if (!user) return alert("Login first!");
 
-  list.innerHTML="";
+  let title = document.getElementById("title").value;
+  let content = document.getElementById("content").value;
 
-  notes
-    .filter(n => n.user === currentUser)
-    .filter(n => n.title.toLowerCase().includes(search) || n.content.toLowerCase().includes(search))
-    .forEach(n => {
-      const div = document.createElement("div");
-      div.className="note";
-      div.innerHTML = `<b>${n.title}</b><br>${n.content}`;
-      list.appendChild(div);
-    });
-}
+  await supabase.from("notes").insert([
+    {
+      title,
+      content,
+      user_id: user.id
+    }
+  ]);
 
-function showTab(tab){
-  alert("Only Notes implemented for now");
-}
+  loadNotes();
+};
+
+// 📥 LOAD NOTES
+window.loadNotes = async () => {
+  const { data } = await supabase
+    .from("notes")
+    .select("*")
+    .eq("user_id", user.id);
+
+  let list = document.getElementById("notesList");
+  list.innerHTML = "";
+
+  data.forEach(n => {
+    let div = document.createElement("div");
+    div.className = "note";
+    div.innerHTML = `<b>${n.title}</b><br>${n.content}`;
+    list.appendChild(div);
+  });
+};
+
+// 🧮 CALCULATOR
+window.calc = () => {
+  let a = Number(document.getElementById("a").value);
+  let b = Number(document.getElementById("b").value);
+  document.getElementById("result").innerText = "Result: " + (a + b);
+};
+
+// UI SWITCH
+window.show = (id) => {
+  document.querySelectorAll(".section").forEach(s => s.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+
+  if (id === "notes" && user) loadNotes();
+};
 </script>
 
 </body>
