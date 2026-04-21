@@ -2,43 +2,38 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>SaaS FIX</title>
+<title>Stable SaaS</title>
 <style>
 body{font-family:Arial;background:#0b1220;color:white;margin:0}
 .center{height:100vh;display:flex;justify-content:center;align-items:center}
 .card{background:#111827;padding:20px;border-radius:10px;width:300px}
 input,textarea{width:100%;margin-top:10px;padding:10px;border-radius:8px;border:none;background:#0f172a;color:white}
 button{width:100%;margin-top:10px;padding:10px;background:#38bdf8;border:none;border-radius:8px}
-.app{display:flex;height:100vh}
-.sidebar{width:200px;background:#0f172a;padding:10px}
-.main{flex:1;padding:15px}
-.note{background:#111827;padding:10px;margin-top:5px;border-radius:8px}
 .hidden{display:none}
+.note{background:#111827;margin-top:5px;padding:10px;border-radius:8px}
+.app{padding:20px}
 </style>
 </head>
 
 <body>
 
-<div id="login" class="center">
+<div id="auth" class="center">
   <div class="card">
     <h3>Login</h3>
-    <input id="email" placeholder="email">
-    <input id="pass" type="password" placeholder="password">
+    <input id="email">
+    <input id="password" type="password">
     <button onclick="login()">Login</button>
   </div>
 </div>
 
-<div id="app" class="app hidden">
-  <div class="sidebar">
-    <button onclick="logout()">Logout</button>
-  </div>
+<div id="app" class="hidden app">
+  <button onclick="logout()">Logout</button>
 
-  <div class="main">
-    <input id="title" placeholder="title">
-    <textarea id="content"></textarea>
-    <button onclick="save()">Save</button>
-    <div id="list"></div>
-  </div>
+  <input id="title" placeholder="title">
+  <textarea id="content"></textarea>
+  <button onclick="save()">Save</button>
+
+  <div id="list"></div>
 </div>
 
 <script type="module">
@@ -52,33 +47,29 @@ const supabase = createClient(
 let user=null;
 
 /* SESSION */
-const s = await supabase.auth.getSession();
-if(s.data.session){
-  user=s.data.session.user;
+const { data } = await supabase.auth.getSession();
+if(data.session){
+  user = data.session.user;
   open();
 }
 
 window.login = async () => {
   const { data, error } = await supabase.auth.signInWithPassword({
     email:email.value,
-    password:pass.value
+    password:password.value
   });
 
   if(error){
-    const r = await supabase.auth.signUp({
-      email:email.value,
-      password:pass.value
-    });
-    user = r.data.user;
-  } else {
-    user = data.user;
+    alert(error.message);
+    return;
   }
 
+  user = data.user;
   open();
 };
 
 function open(){
-  login.classList.add("hidden");
+  auth.classList.add("hidden");
   app.classList.remove("hidden");
   load();
 }
