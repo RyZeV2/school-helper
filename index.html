@@ -1,99 +1,168 @@
 <!DOCTYPE html>
-<html>
+<html lang="sl">
 <head>
-    <title>School Helper</title>
-
-    <style>
-
-        body {
-            font-family: Arial;
-            text-align: center;
-            background-color: #eef2f7;
-            padding: 40px;
-        }
-
-        h1 {
-            font-size: 40px;
-        }
-
-        button {
-            padding: 12px 25px;
-            font-size: 18px;
-            margin: 10px;
-            cursor: pointer;
-            border-radius: 8px;
-        }
-
-        .box {
-            background-color: white;
-            padding: 20px;
-            margin: 20px auto;
-            width: 300px;
-            border-radius: 12px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-
-    </style>
-
-</head>
-
-<body>
-
-    <h1>📚 School Helper</h1>
-
-    <div class="box">
-
-        <h2>🎲 Random Number Generator</h2>
-
-        <button onclick="generateNumber()">
-            Generate Number
-        </button>
-
-        <p id="numberResult"></p>
-
-    </div>
-
-    <div class="box">
-
-        <h2>🔐 Password Generator</h2>
-
-        <button onclick="generatePassword()">
-            Generate Password
-        </button>
-
-        <p id="passwordResult"></p>
-
-    </div>
-
-<script>
-
-function generateNumber() {
-
-    let number =
-        Math.floor(Math.random() * 100);
-
-    document.getElementById("numberResult").innerText =
-        "Number: " + number;
-}
-
-function generatePassword() {
-
-    let chars =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-    let password = "";
-
-    for (let i = 0; i < 10; i++) {
-
-        password +=
-            chars[Math.floor(Math.random() * chars.length)];
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>School Helper Dashboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
     }
 
-    document.getElementById("passwordResult").innerText =
-        "Password: " + password;
-}
+    body {
+      background: #0f172a;
+      color: #e2e8f0;
+      display: flex;
+      min-height: 100vh;
+    }
 
-</script>
+    /* Sidebar */
+    .sidebar {
+      width: 240px;
+      background: #111827;
+      padding: 20px;
+    }
+
+    .sidebar h2 {
+      margin-bottom: 20px;
+      font-size: 20px;
+      color: #38bdf8;
+    }
+
+    .nav-btn {
+      display: block;
+      width: 100%;
+      margin: 10px 0;
+      padding: 10px;
+      background: #1f2937;
+      border: none;
+      color: white;
+      cursor: pointer;
+      border-radius: 8px;
+      text-align: left;
+    }
+
+    .nav-btn:hover {
+      background: #334155;
+    }
+
+    /* Main */
+    .main {
+      flex: 1;
+      padding: 20px;
+    }
+
+    .card {
+      background: #1f2937;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+
+    /* Calculator */
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: none;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #38bdf8;
+      color: black;
+      font-weight: bold;
+    }
+
+    textarea {
+      width: 100%;
+      height: 120px;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: none;
+      padding: 10px;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar">
+    <h2>📚 School Helper</h2>
+    <button class="nav-btn" onclick="showSection('home')">🏠 Domov</button>
+    <button class="nav-btn" onclick="showSection('calc')">🧮 Kalkulator</button>
+    <button class="nav-btn" onclick="showSection('notes')">📝 Zapiski</button>
+  </div>
+
+  <div class="main">
+
+    <!-- Home -->
+    <div id="home" class="section">
+      <div class="card">
+        <h2>Dobrodošel 👋</h2>
+        <p>To je tvoj šolski dashboard z orodji.</p>
+      </div>
+    </div>
+
+    <!-- Calculator -->
+    <div id="calc" class="section hidden">
+      <div class="card">
+        <h2>Kalkulator</h2>
+        <input id="calcInput" placeholder="npr. 5+5*2" />
+        <button onclick="calculate()">Izračunaj</button>
+        <p id="result"></p>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div id="notes" class="section hidden">
+      <div class="card">
+        <h2>Zapiski</h2>
+        <textarea id="notesArea" placeholder="Napiši zapiske..."></textarea>
+        <button onclick="saveNotes()">Shrani</button>
+        <button onclick="loadNotes()">Naloži</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function showSection(id) {
+      document.querySelectorAll('.section').forEach(sec => {
+        sec.classList.add('hidden');
+      });
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function calculate() {
+      let input = document.getElementById('calcInput').value;
+      try {
+        document.getElementById('result').innerText = "Rezultat: " + eval(input);
+      } catch {
+        document.getElementById('result').innerText = "Napaka!";
+      }
+    }
+
+    function saveNotes() {
+      localStorage.setItem('notes', document.getElementById('notesArea').value);
+      alert('Shranjeno!');
+    }
+
+    function loadNotes() {
+      document.getElementById('notesArea').value = localStorage.getItem('notes') || '';
+    }
+  </script>
 
 </body>
 </html>
