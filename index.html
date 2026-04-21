@@ -1,39 +1,107 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Stable SaaS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>School SaaS Notes</title>
+
 <style>
-body{font-family:Arial;background:#0b1220;color:white;margin:0}
-.center{height:100vh;display:flex;justify-content:center;align-items:center}
-.card{background:#111827;padding:20px;border-radius:10px;width:300px}
-input,textarea{width:100%;margin-top:10px;padding:10px;border-radius:8px;border:none;background:#0f172a;color:white}
-button{width:100%;margin-top:10px;padding:10px;background:#38bdf8;border:none;border-radius:8px}
-.hidden{display:none}
-.note{background:#111827;margin-top:5px;padding:10px;border-radius:8px}
-.app{padding:20px}
+body{
+  margin:0;
+  font-family:Arial;
+  background:#0b1220;
+  color:white;
+  display:flex;
+}
+
+.sidebar{
+  width:220px;
+  background:#0f172a;
+  padding:15px;
+}
+
+.main{
+  flex:1;
+  padding:20px;
+}
+
+.card{
+  background:#111827;
+  padding:15px;
+  border-radius:10px;
+  margin-bottom:10px;
+}
+
+input, textarea{
+  width:100%;
+  margin-top:10px;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  background:#0f172a;
+  color:white;
+}
+
+button{
+  width:100%;
+  margin-top:10px;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  background:#38bdf8;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+.note{
+  background:#111827;
+  padding:10px;
+  margin-top:8px;
+  border-radius:8px;
+}
+
+.status{
+  margin-top:10px;
+  font-size:13px;
+  opacity:0.9;
+}
 </style>
 </head>
 
 <body>
 
-<div id="auth" class="center">
-  <div class="card">
-    <h3>Login</h3>
-    <input id="email">
-    <input id="password" type="password">
-    <button onclick="login()">Login</button>
-  </div>
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <h3>📚 Notes</h3>
+  <button onclick="logout()">Logout</button>
 </div>
 
-<div id="app" class="hidden app">
-  <button onclick="logout()">Logout</button>
+<!-- MAIN -->
+<div class="main">
 
-  <input id="title" placeholder="title">
-  <textarea id="content"></textarea>
-  <button onclick="save()">Save</button>
+  <!-- AUTH -->
+  <div id="auth" class="card">
+    <h3>Login</h3>
+    <input id="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+  </div>
 
-  <div id="list"></div>
+  <!-- APP -->
+  <div id="app" style="display:none;">
+
+    <div class="card">
+      <input id="title" placeholder="Title">
+      <textarea id="content" placeholder="Write note..."></textarea>
+      <button id="saveBtn" onclick="saveNote()">Save</button>
+
+      <div id="status" class="status"></div>
+    </div>
+
+    <div id="list"></div>
+
+  </div>
+
 </div>
 
 <script type="module">
@@ -44,65 +112,109 @@ const supabase = createClient(
   "sb_publishable_ND5M0H9tuFmirts34peHPA_3pwCD-1l"
 );
 
-let user=null;
+let user = null;
 
-/* SESSION */
-const { data } = await supabase.auth.getSession();
-if(data.session){
-  user = data.session.user;
-  open();
+/* CHECK SESSION */
+const session = await supabase.auth.getSession();
+if(session.data.session){
+  user = session.data.session.user;
+  openApp();
 }
 
+/* LOGIN */
 window.login = async () => {
+  status.innerText = "Logging in...";
+
   const { data, error } = await supabase.auth.signInWithPassword({
-    email:email.value,
-    password:password.value
+    email: email.value,
+    password: password.value
   });
 
   if(error){
-    alert(error.message);
-    return;
+    const r = await supabase.auth.signUp({
+      email: email.value,
+      password: password.value
+    });
+
+    if(r.error){
+      status.innerText = "❌ " + r.error.message;
+      return;
+    }
+
+    user = r.data.user;
+  } else {
+    user = data.user;
   }
 
-  user = data.user;
-  open();
+  openApp();
 };
 
-function open(){
-  auth.classList.add("hidden");
-  app.classList.remove("hidden");
-  load();
+/* OPEN APP */
+function openApp(){
+  auth.style.display = "none";
+  app.style.display = "block";
+  loadNotes();
 }
 
+/* LOGOUT */
 window.logout = async () => {
   await supabase.auth.signOut();
   location.reload();
 };
 
-async function load(){
-  const { data } = await supabase
+/* LOAD NOTES */
+async function loadNotes(){
+  const { data, error } = await supabase
     .from("notes")
     .select("*")
     .eq("user_id", user.id);
 
-  list.innerHTML="";
+  list.innerHTML = "";
+
+  if(error){
+    list.innerHTML = "<p>❌ Error loading notes</p>";
+    return;
+  }
+
+  if(data.length === 0){
+    list.innerHTML = "<p style='opacity:0.5'>No notes yet</p>";
+    return;
+  }
 
   data.forEach(n=>{
-    const d=document.createElement("div");
-    d.className="note";
-    d.innerText=n.title;
-    list.appendChild(d);
+    const div = document.createElement("div");
+    div.className = "note";
+    div.innerHTML = `<b>${n.title}</b><br>${n.content}`;
+    list.appendChild(div);
   });
 }
 
-window.save = async () => {
-  await supabase.from("notes").insert([{
-    title:title.value,
-    content:content.value,
-    user_id:user.id
+/* SAVE NOTE */
+window.saveNote = async () => {
+
+  saveBtn.disabled = true;
+  saveBtn.innerText = "Saving...";
+  status.innerText = "Saving note...";
+
+  const { error } = await supabase.from("notes").insert([{
+    title: title.value,
+    content: content.value,
+    user_id: user.id
   }]);
 
-  load();
+  saveBtn.disabled = false;
+  saveBtn.innerText = "Save";
+
+  if(error){
+    status.innerText = "❌ Failed to save";
+    return;
+  }
+
+  status.innerText = "✅ Saved!";
+  title.value = "";
+  content.value = "";
+
+  loadNotes();
 };
 </script>
 
