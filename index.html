@@ -1,359 +1,431 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>School SaaS Notes</title>
-
-<link rel="manifest" href="manifest.json">
+<title>School Helper SaaS</title>
 
 <style>
 
 body{
-  margin:0;
-  font-family:Arial;
-  background:#0b1220;
-  color:white;
-  display:flex;
+margin:0;
+font-family:Arial;
+background:#0b1220;
+color:white;
+display:flex;
+height:100vh;
 }
+
+/* SIDEBAR */
 
 .sidebar{
-  width:220px;
-  background:#0f172a;
-  padding:15px;
+width:220px;
+background:#0f172a;
+padding:15px;
+display:flex;
+flex-direction:column;
+gap:10px;
 }
+
+.sidebar button{
+background:#111827;
+}
+
+/* MAIN */
 
 .main{
-  flex:1;
-  padding:20px;
+flex:1;
+padding:20px;
+overflow:auto;
 }
+
+/* CARD */
 
 .card{
-  background:#111827;
-  padding:15px;
-  border-radius:10px;
-  margin-bottom:10px;
+background:#111827;
+padding:15px;
+border-radius:10px;
+margin-bottom:15px;
 }
 
-input, textarea{
-  width:100%;
-  margin-top:10px;
-  padding:10px;
-  border:none;
-  border-radius:8px;
-  background:#0f172a;
-  color:white;
+input,textarea{
+width:100%;
+margin-top:10px;
+padding:10px;
+border:none;
+border-radius:8px;
+background:#0f172a;
+color:white;
 }
 
 button{
-  width:100%;
-  margin-top:10px;
-  padding:10px;
-  border:none;
-  border-radius:8px;
-  background:#38bdf8;
-  cursor:pointer;
-  font-weight:bold;
+width:100%;
+margin-top:10px;
+padding:10px;
+border:none;
+border-radius:8px;
+background:#38bdf8;
+cursor:pointer;
+font-weight:bold;
 }
 
 .note{
-  background:#111827;
-  padding:10px;
-  margin-top:8px;
-  border-radius:8px;
+background:#111827;
+padding:10px;
+margin-top:8px;
+border-radius:8px;
 }
 
-.status{
-  margin-top:10px;
-  font-size:13px;
-  opacity:0.9;
+/* LOGIN MODAL */
+
+.overlay{
+position:fixed;
+inset:0;
+background:rgba(0,0,0,0.8);
+display:flex;
+justify-content:center;
+align-items:center;
+z-index:1000;
+}
+
+.modal{
+width:320px;
+background:#111827;
+padding:20px;
+border-radius:12px;
+}
+
+.link{
+font-size:13px;
+margin-top:10px;
+cursor:pointer;
+text-align:center;
+color:#38bdf8;
 }
 
 </style>
+
 </head>
 
 <body>
 
+<!-- LOGIN -->
+
+<div id="overlay" class="overlay">
+
+<div class="modal">
+
+<h3 id="modeTitle">Login</h3>
+
+<input id="email" placeholder="Email">
+<input id="password" type="password" placeholder="Password">
+
+<button onclick="login()">Login</button>
+
+<button onclick="signup()">Signup</button>
+
+<button onclick="googleLogin()">
+Continue with Google
+</button>
+
+<div class="link" onclick="forgotPassword()">
+Forgot password?
+</div>
+
+<div id="status"></div>
+
+</div>
+
+</div>
+
 <!-- SIDEBAR -->
+
 <div class="sidebar">
-  <h3>📚 Notes</h3>
-  <button onclick="logout()">Logout</button>
+
+<h3>📚 School</h3>
+
+<button onclick="showNotes()">
+Notes
+</button>
+
+<button onclick="showCalculator()">
+Calculator
+</button>
+
+<button onclick="logout()">
+Logout
+</button>
+
 </div>
 
 <!-- MAIN -->
+
 <div class="main">
 
-  <!-- AUTH -->
-  <div id="auth" class="card">
+<!-- NOTES -->
 
-    <h3>Login / Sign up</h3>
+<div id="notesPage">
 
-    <input id="email" placeholder="Email">
+<div class="card">
 
-    <input id="password" 
-           type="password" 
-           placeholder="Password">
+<input id="title"
+placeholder="Note title">
 
-    <button onclick="login()">
-      Continue
-    </button>
+<textarea id="content"
+placeholder="Write note...">
+</textarea>
 
-    <div id="loginStatus" class="status"></div>
+<button onclick="saveNote()">
+Save Note
+</button>
 
-  </div>
+</div>
 
-  <!-- APP -->
-  <div id="app" style="display:none;">
+<div id="list"></div>
 
-    <div class="card">
+</div>
 
-      <input id="title" placeholder="Title">
+<!-- CALCULATOR -->
 
-      <textarea 
-        id="content" 
-        placeholder="Write note...">
-      </textarea>
+<div id="calculatorPage"
+style="display:none;">
 
-      <button 
-        id="saveBtn" 
-        onclick="saveNote()">
+<div class="card">
 
-        Save
+<input id="calcInput"
+placeholder="Example: sqrt(25)+5^2">
 
-      </button>
+<button onclick="calculate()">
+Calculate
+</button>
 
-      <div id="status" class="status"></div>
+<div id="calcResult"
+style="margin-top:10px;">
+</div>
 
-    </div>
+</div>
 
-    <div id="list"></div>
-
-  </div>
+</div>
 
 </div>
 
 <script type="module">
 
-import { createClient } 
+import { createClient }
 from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
 const supabase = createClient(
-  "https://tvjzmjahyipbihvkemkd.supabase.co",
-  "sb_publishable_ND5M0H9tuFmirts34peHPA_3pwCD-1l"
+"https://tvjzmjahyipbihvkemkd.supabase.co",
+"sb_publishable_ND5M0H9tuFmirts34peHPA_3pwCD-1l"
 );
 
-let user = null;
+let user=null;
 
-/* CHECK SESSION */
+/* SESSION */
 
-const { data } = 
+const { data } =
 await supabase.auth.getSession();
 
 if(data.session){
 
-  user = data.session.user;
-
-  openApp();
+user=data.session.user;
+overlay.style.display="none";
+loadNotes();
 
 }
 
 /* LOGIN */
 
-window.login = async () => {
+window.login = async ()=>{
 
-  loginStatus.innerText = 
-    "Checking account...";
+status.innerText="Logging in...";
 
-  const { data, error } =
-  await supabase.auth.signInWithPassword({
+const { data, error } =
+await supabase.auth.signInWithPassword({
 
-    email: email.value,
-    password: password.value
+email:email.value,
+password:password.value
 
-  });
+});
 
-  /* če user ne obstaja → ustvari */
+if(error){
 
-  if(error){
+status.innerText="❌ "+error.message;
+return;
 
-    if(error.message.includes("Invalid login")){
+}
 
-      loginStatus.innerText =
-        "Creating account...";
+user=data.user;
 
-      const signup =
-      await supabase.auth.signUp({
+overlay.style.display="none";
 
-        email: email.value,
-        password: password.value
-
-      });
-
-      if(signup.error){
-
-        loginStatus.innerText =
-          "❌ " + signup.error.message;
-
-        return;
-      }
-
-      user = signup.data.user;
-
-    }
-
-    else{
-
-      loginStatus.innerText =
-        "❌ " + error.message;
-
-      return;
-
-    }
-
-  }
-
-  else{
-
-    user = data.user;
-
-  }
-
-  loginStatus.innerText =
-    "✅ Logged in";
-
-  openApp();
+loadNotes();
 
 };
 
-/* OPEN APP */
+/* SIGNUP */
 
-function openApp(){
+window.signup = async ()=>{
 
-  auth.style.display = "none";
+status.innerText="Creating account...";
 
-  app.style.display = "block";
+const { error } =
+await supabase.auth.signUp({
 
-  loadNotes();
+email:email.value,
+password:password.value
+
+});
+
+if(error){
+
+status.innerText="❌ "+error.message;
+return;
 
 }
+
+status.innerText=
+"📧 Check email to confirm";
+
+};
+
+/* GOOGLE LOGIN */
+
+window.googleLogin = async ()=>{
+
+await supabase.auth.signInWithOAuth({
+
+provider:"google",
+options:{
+redirectTo:
+"https://ryzev2.github.io/school-helper/"
+}
+
+});
+
+};
+
+/* FORGOT */
+
+window.forgotPassword = async ()=>{
+
+const { error } =
+await supabase.auth.resetPasswordForEmail(
+
+email.value
+
+);
+
+if(error){
+
+status.innerText="❌ Failed";
+return;
+
+}
+
+status.innerText=
+"📧 Reset email sent";
+
+};
 
 /* LOGOUT */
 
-window.logout = async () => {
+window.logout = async ()=>{
 
-  await supabase.auth.signOut();
+await supabase.auth.signOut();
 
-  location.reload();
+location.reload();
 
 };
 
-/* LOAD NOTES */
+/* NOTES */
 
 async function loadNotes(){
 
-  const { data, error } =
-  await supabase
+const { data } =
+await supabase
+.from("notes")
+.select("*")
+.eq("user_id", user.id);
 
-    .from("notes")
+list.innerHTML="";
 
-    .select("*")
+data.forEach(n=>{
 
-    .eq("user_id", user.id)
+const div =
+document.createElement("div");
 
-    .order("created_at",
-           { ascending:false });
+div.className="note";
 
-  list.innerHTML = "";
+div.innerHTML=
+`<b>${n.title}</b><br>${n.content}`;
 
-  if(error){
+list.appendChild(div);
 
-    list.innerHTML =
-      "<p>❌ Error loading notes</p>";
-
-    return;
-
-  }
-
-  if(data.length === 0){
-
-    list.innerHTML =
-      "<p style='opacity:0.5'>No notes yet</p>";
-
-    return;
-
-  }
-
-  data.forEach(n=>{
-
-    const div =
-    document.createElement("div");
-
-    div.className = "note";
-
-    div.innerHTML =
-      `<b>${n.title}</b><br>${n.content}`;
-
-    list.appendChild(div);
-
-  });
+});
 
 }
 
-/* SAVE NOTE */
+window.saveNote = async ()=>{
 
-window.saveNote = async () => {
+await supabase
+.from("notes")
+.insert([{
 
-  saveBtn.disabled = true;
+title:title.value,
+content:content.value,
+user_id:user.id
 
-  saveBtn.innerText = "Saving...";
+}]);
 
-  status.innerText = "Saving note...";
+title.value="";
+content.value="";
 
-  const { error } =
-  await supabase.from("notes").insert([{
-
-    title: title.value,
-
-    content: content.value,
-
-    user_id: user.id
-
-  }]);
-
-  saveBtn.disabled = false;
-
-  saveBtn.innerText = "Save";
-
-  if(error){
-
-    status.innerText =
-      "❌ Failed to save";
-
-    return;
-
-  }
-
-  status.innerText =
-    "✅ Saved!";
-
-  title.value = "";
-
-  content.value = "";
-
-  loadNotes();
+loadNotes();
 
 };
 
-/* REGISTER SERVICE WORKER */
+/* NAVIGATION */
 
-if("serviceWorker" in navigator){
+window.showNotes=()=>{
 
-  navigator.serviceWorker
-    .register("service-worker.js");
+notesPage.style.display="block";
+calculatorPage.style.display="none";
+
+};
+
+window.showCalculator=()=>{
+
+notesPage.style.display="none";
+calculatorPage.style.display="block";
+
+};
+
+/* CALCULATOR */
+
+window.calculate=()=>{
+
+let expr=calcInput.value;
+
+expr=expr
+.replace(/sqrt/g,"Math.sqrt")
+.replace(/\^/g,"**");
+
+try{
+
+calcResult.innerText=
+eval(expr);
+
+}catch{
+
+calcResult.innerText=
+"Invalid expression";
 
 }
+
+};
 
 </script>
 
