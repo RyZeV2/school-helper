@@ -1,11 +1,16 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
+
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>School SaaS Notes</title>
 
+<link rel="manifest" href="manifest.json">
+
 <style>
+
 body{
   margin:0;
   font-family:Arial;
@@ -65,6 +70,7 @@ button{
   font-size:13px;
   opacity:0.9;
 }
+
 </style>
 </head>
 
@@ -81,21 +87,45 @@ button{
 
   <!-- AUTH -->
   <div id="auth" class="card">
-    <h3>Login</h3>
+
+    <h3>Login / Sign up</h3>
+
     <input id="email" placeholder="Email">
-    <input id="password" type="password" placeholder="Password">
-    <button onclick="login()">Login</button>
+
+    <input id="password" 
+           type="password" 
+           placeholder="Password">
+
+    <button onclick="login()">
+      Continue
+    </button>
+
+    <div id="loginStatus" class="status"></div>
+
   </div>
 
   <!-- APP -->
   <div id="app" style="display:none;">
 
     <div class="card">
+
       <input id="title" placeholder="Title">
-      <textarea id="content" placeholder="Write note..."></textarea>
-      <button id="saveBtn" onclick="saveNote()">Save</button>
+
+      <textarea 
+        id="content" 
+        placeholder="Write note...">
+      </textarea>
+
+      <button 
+        id="saveBtn" 
+        onclick="saveNote()">
+
+        Save
+
+      </button>
 
       <div id="status" class="status"></div>
+
     </div>
 
     <div id="list"></div>
@@ -105,7 +135,9 @@ button{
 </div>
 
 <script type="module">
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+import { createClient } 
+from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
 const supabase = createClient(
   "https://tvjzmjahyipbihvkemkd.supabase.co",
@@ -115,107 +147,214 @@ const supabase = createClient(
 let user = null;
 
 /* CHECK SESSION */
-const session = await supabase.auth.getSession();
-if(session.data.session){
-  user = session.data.session.user;
+
+const { data } = 
+await supabase.auth.getSession();
+
+if(data.session){
+
+  user = data.session.user;
+
   openApp();
+
 }
 
 /* LOGIN */
-window.login = async () => {
-  status.innerText = "Logging in...";
 
-  const { data, error } = await supabase.auth.signInWithPassword({
+window.login = async () => {
+
+  loginStatus.innerText = 
+    "Checking account...";
+
+  const { data, error } =
+  await supabase.auth.signInWithPassword({
+
     email: email.value,
     password: password.value
+
   });
 
-  if(error){
-    const r = await supabase.auth.signUp({
-      email: email.value,
-      password: password.value
-    });
+  /* če user ne obstaja → ustvari */
 
-    if(r.error){
-      status.innerText = "❌ " + r.error.message;
-      return;
+  if(error){
+
+    if(error.message.includes("Invalid login")){
+
+      loginStatus.innerText =
+        "Creating account...";
+
+      const signup =
+      await supabase.auth.signUp({
+
+        email: email.value,
+        password: password.value
+
+      });
+
+      if(signup.error){
+
+        loginStatus.innerText =
+          "❌ " + signup.error.message;
+
+        return;
+      }
+
+      user = signup.data.user;
+
     }
 
-    user = r.data.user;
-  } else {
-    user = data.user;
+    else{
+
+      loginStatus.innerText =
+        "❌ " + error.message;
+
+      return;
+
+    }
+
   }
 
+  else{
+
+    user = data.user;
+
+  }
+
+  loginStatus.innerText =
+    "✅ Logged in";
+
   openApp();
+
 };
 
 /* OPEN APP */
+
 function openApp(){
+
   auth.style.display = "none";
+
   app.style.display = "block";
+
   loadNotes();
+
 }
 
 /* LOGOUT */
+
 window.logout = async () => {
+
   await supabase.auth.signOut();
+
   location.reload();
+
 };
 
 /* LOAD NOTES */
+
 async function loadNotes(){
-  const { data, error } = await supabase
+
+  const { data, error } =
+  await supabase
+
     .from("notes")
+
     .select("*")
-    .eq("user_id", user.id);
+
+    .eq("user_id", user.id)
+
+    .order("created_at",
+           { ascending:false });
 
   list.innerHTML = "";
 
   if(error){
-    list.innerHTML = "<p>❌ Error loading notes</p>";
+
+    list.innerHTML =
+      "<p>❌ Error loading notes</p>";
+
     return;
+
   }
 
   if(data.length === 0){
-    list.innerHTML = "<p style='opacity:0.5'>No notes yet</p>";
+
+    list.innerHTML =
+      "<p style='opacity:0.5'>No notes yet</p>";
+
     return;
+
   }
 
   data.forEach(n=>{
-    const div = document.createElement("div");
+
+    const div =
+    document.createElement("div");
+
     div.className = "note";
-    div.innerHTML = `<b>${n.title}</b><br>${n.content}`;
+
+    div.innerHTML =
+      `<b>${n.title}</b><br>${n.content}`;
+
     list.appendChild(div);
+
   });
+
 }
 
 /* SAVE NOTE */
+
 window.saveNote = async () => {
 
   saveBtn.disabled = true;
+
   saveBtn.innerText = "Saving...";
+
   status.innerText = "Saving note...";
 
-  const { error } = await supabase.from("notes").insert([{
+  const { error } =
+  await supabase.from("notes").insert([{
+
     title: title.value,
+
     content: content.value,
+
     user_id: user.id
+
   }]);
 
   saveBtn.disabled = false;
+
   saveBtn.innerText = "Save";
 
   if(error){
-    status.innerText = "❌ Failed to save";
+
+    status.innerText =
+      "❌ Failed to save";
+
     return;
+
   }
 
-  status.innerText = "✅ Saved!";
+  status.innerText =
+    "✅ Saved!";
+
   title.value = "";
+
   content.value = "";
 
   loadNotes();
+
 };
+
+/* REGISTER SERVICE WORKER */
+
+if("serviceWorker" in navigator){
+
+  navigator.serviceWorker
+    .register("service-worker.js");
+
+}
+
 </script>
 
 </body>
